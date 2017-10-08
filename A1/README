@@ -1,0 +1,16 @@
+How to run for Ubuntu at mc labs:
+
+
+The same to A0
+
+After compiled the cs488 file, open A1 file
+
+premake4 gmake
+make
+./A1
+
+
+
+Developing environment: MC3007 and MC3022
+
+
