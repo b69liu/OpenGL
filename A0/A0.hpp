@@ -44,7 +44,6 @@ protected:
 
 	// Shape rotation angle in radians.
 	float m_shape_rotation;
-
 	// 2-component vector of floats.
 	// Shape translation in (x,y) direction.
 	glm::vec2 m_shape_translation;
@@ -61,4 +60,10 @@ protected:
 
 	// True if mouse button is currently down.
 	bool m_mouseButtonActive;
+
+
+
+        //load bmp to stack
+        GLuint LoadTextureRAW( const char * filename );
+
 };

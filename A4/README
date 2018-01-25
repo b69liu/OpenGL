@@ -1,0 +1,14 @@
+How to run for Ubuntu:
+
+go to A4 dir
+premake4 gmake
+make
+./A4 <luafile>
+
+
+Developing environment: MC3007
+
+The Assignment is not completed.
+Only shpere can be rendered.
+For the hierachical, the rotation may not work properly.
+No extral feature

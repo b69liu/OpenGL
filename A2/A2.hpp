@@ -61,15 +61,32 @@ protected:
 	);
 
         float* CreateCube();
+
+        void reset();
        
         float vport_w,vport_h,near,far,right,top;
-        
+        float ofar, onear; 
         float tran_x,tran_y,tran_z; //object trans
+        float ntran_x,ntran_y,ntran_z;
+
         float vtran_x,vtran_y,vtran_z; //view trans
         float rot_x,rot_y,rot_z;
         float vrot_x,vrot_y,vrot_z;
-
+        float vport_centre_x,vport_centre_y;
+        float theta, otheta;
 	ShaderProgram m_shader;
+
+        int shortcut = 0;
+
+
+        //mouse
+        bool m_mouseLeftAct = false;
+        bool m_mouseRightAct = false;
+        bool m_mouseMidAct = false;
+
+
+        
+
 
 	GLuint m_vao;            // Vertex Array Object
 	GLuint m_vbo_positions;  // Vertex Buffer Object
@@ -79,5 +96,14 @@ protected:
 	VertexData m_vertexData;
 
 	glm::vec3 m_currentLineColour;
+        glm::vec2 m_mouse_GL_coordinate;
+        glm::vec2 m_mouse1;
+        glm::vec2 m_mouse2;
+        glm::vec4 camNom;
+        glm::mat4 Mats,VRotMat,nVRotMat,VTranMat,nVTranMat,
+                  ObjRotMat, nObjRotMat,ObjScaMat,nObjScaMat;
+       float mouse_x =0;
+       float mouse_y = 0;
+
 
 };

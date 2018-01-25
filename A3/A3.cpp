@@ -13,12 +13,21 @@ using namespace std;
 #include <glm/gtx/io.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <vector>
+
 using namespace glm;
 
 static bool show_gui = true;
 
 const size_t CIRCLE_PTS = 48;
 
+int id = 0; //used to konw which component drawing
+bool do_picking;
+bool selected[100];
+bool IsRoot = true;
+double offset_x = 0.0;
+double offset_y = 0.0;
+bool JustRelease = false;
 //----------------------------------------------------------------------------------------
 // Constructor
 A3::A3(const std::string & luaSceneFile)
@@ -65,7 +74,23 @@ void A3::init()
 	unique_ptr<MeshConsolidator> meshConsolidator (new MeshConsolidator{
 			getAssetFilePath("cube.obj"),
 			getAssetFilePath("sphere.obj"),
-			getAssetFilePath("suzanne.obj")
+			getAssetFilePath("suzanne.obj"),
+                        getAssetFilePath("head.obj"),
+                        getAssetFilePath("neck.obj"),
+                        getAssetFilePath("tor.obj"),
+                        getAssetFilePath("leftshoder.obj"),
+                        getAssetFilePath("leftarm.obj"),
+                        getAssetFilePath("lefthand.obj"),
+                        getAssetFilePath("rightshoulder.obj"),
+                        getAssetFilePath("rightarm.obj"),
+                        getAssetFilePath("righthand.obj"),
+                        getAssetFilePath("leftbigleg.obj"),
+                        getAssetFilePath("leftsmalllge.obj"),
+                        getAssetFilePath("leftshoe.obj"),
+                        getAssetFilePath("rightbigleg.obj"),
+                        getAssetFilePath("rightsmalllge.obj"),
+                        getAssetFilePath("rightshoe.obj"),
+
 	});
 
 
@@ -88,7 +113,67 @@ void A3::init()
 	// all vertex data resources.  This is fine since we already copied this data to
 	// VBOs on the GPU.  We have no use for storing vertex data on the CPU side beyond
 	// this point.
+
+        do_picking = false;
+        for(int i=0;i<100;i++){
+           selected[i] = false;
+        }//end fori 
+        reset();
 }
+
+void A3::reset(){
+
+
+     RotMat = mat4(1.0f,0.0f,0.0f,0.0f,
+                   0.0f,1.0f,0.0f,0.0f,
+                   0.0f,0.0f,1.0f,0.0f,
+                   0.0f,0.0f,0.0f,1.0f);
+     nRotMat = mat4(1.0f,0.0f,0.0f,0.0f,
+                   0.0f,1.0f,0.0f,0.0f,
+                   0.0f,0.0f,1.0f,0.0f,
+                   0.0f,0.0f,0.0f,1.0f);
+     ObjRotMat = mat4(1.0f,0.0f,0.0f,0.0f,
+                   0.0f,1.0f,0.0f,0.0f,
+                   0.0f,0.0f,1.0f,0.0f,
+                   0.0f,0.0f,0.0f,1.0f);
+     nObjRotMat = mat4(1.0f,0.0f,0.0f,0.0f,
+                   0.0f,1.0f,0.0f,0.0f,
+                   0.0f,0.0f,1.0f,0.0f,
+                   0.0f,0.0f,0.0f,1.0f);
+
+
+     mouse_x = 0.0;
+     mouse_y = 0.0;
+     offset_x =0.0;
+     offset_y =0.0;
+
+
+}
+
+
+
+mat4 rotx(float sita){
+     return mat4(vec4(1,0,0,0),
+                 vec4(0,cos(sita),sin(sita),0),
+                 vec4(0,-sin(sita),cos(sita),0),
+                 vec4(0,0,0,1));
+}
+
+mat4 roty(float sita){
+     return mat4(vec4(cos(sita),0,-sin(sita),0),
+                 vec4(0,1,0,0),
+                 vec4(sin(sita),0,cos(sita),0),
+                 vec4(0,0,0,1));
+}
+
+mat4 rotz(float sita){
+     return mat4(vec4(cos(sita),sin(sita),0,0),
+                 vec4(-sin(sita),cos(sita),0,0),
+                 vec4(0,0,1,0),
+                 vec4(0,0,0,1));
+}
+
+
 
 //----------------------------------------------------------------------------------------
 void A3::processLuaSceneFile(const std::string & filename) {
@@ -134,6 +219,10 @@ void A3::enableVertexShaderInputSlots()
 		// Enable the vertex shader attribute location for "normal" when rendering.
 		m_normalAttribLocation = m_shader.getAttribLocation("normal");
 		glEnableVertexAttribArray(m_normalAttribLocation);
+
+                // Enable the vertex shader attribut location for textCoord when rendering.
+//                glEnableVertexAttribArray(2);
+
 
 		CHECK_GL_ERRORS;
 	}
@@ -271,8 +360,12 @@ void A3::uploadCommonSceneUniforms() {
 		CHECK_GL_ERRORS;
 
 
+                //if picking
+                location = m_shader.getUniformLocation("picking");
+                glUniform1i( location, do_picking ? 1 : 0);
+
 		//-- Set LightSource uniform for the scene:
-		{
+		if(!do_picking){
 			location = m_shader.getUniformLocation("light.position");
 			glUniform3fv(location, 1, value_ptr(m_light.position));
 			location = m_shader.getUniformLocation("light.rgbIntensity");
@@ -281,7 +374,7 @@ void A3::uploadCommonSceneUniforms() {
 		}
 
 		//-- Set background light ambient intensity
-		{
+		if(!do_picking){
 			location = m_shader.getUniformLocation("ambientIntensity");
 			vec3 ambientIntensity(0.05f);
 			glUniform3fv(location, 1, value_ptr(ambientIntensity));
@@ -344,18 +437,45 @@ void A3::guiLogic()
 static void updateShaderUniforms(
 		const ShaderProgram & shader,
 		const GeometryNode & node,
-		const glm::mat4 & viewMatrix
+		const glm::mat4 & viewMatrix,
+                const glm::mat4 & RotMatrix
 ) {
+        glm::vec3 col;
+
+        if(selected[id]){
+             col = glm::vec3(1.0,1.0,0.0);    //change selected color
+        }//end if selec
 
 	shader.enable();
 	{
 		//-- Set ModelView matrix:
 		GLint location = shader.getUniformLocation("ModelView");
-		mat4 modelView = viewMatrix * node.trans;
+                
+
+                mat4 modelView =  viewMatrix  *  node.father_trans *node.trans;
+  //              if(IsRoot){
+  //                   modelView = viewMatrix * node.father_trans *node.trans * RotMatrix;
+ //                    IsRoot = false;
+ //               }
+
+//		mat4 modelView = viewMatrix * node.trans;
 		glUniformMatrix4fv(location, 1, GL_FALSE, value_ptr(modelView));
 		CHECK_GL_ERRORS;
 
+
+             if(do_picking) {
+
+                float r = float(id&0xff) / 255.0f;
+                float g = float((id>>8)&0xff) / 255.0f;
+                float b = float((id>>16)&0xff) / 255.0f;
+
+                location = shader.getUniformLocation("material.kd");
+                glUniform3f(location, r,g,b);
+                CHECK_GL_ERRORS;
+
+             }else{
 		//-- Set NormMatrix:
+
 		location = shader.getUniformLocation("NormalMatrix");
 		mat3 normalMatrix = glm::transpose(glm::inverse(mat3(modelView)));
 		glUniformMatrix3fv(location, 1, GL_FALSE, value_ptr(normalMatrix));
@@ -365,6 +485,9 @@ static void updateShaderUniforms(
 		//-- Set Material values:
 		location = shader.getUniformLocation("material.kd");
 		vec3 kd = node.material.kd;
+                if(selected[id]){
+                    kd = vec3(0.5,0.5,0.2);    //change the color of selected
+                }
 		glUniform3fv(location, 1, value_ptr(kd));
 		CHECK_GL_ERRORS;
 		location = shader.getUniformLocation("material.ks");
@@ -374,6 +497,7 @@ static void updateShaderUniforms(
 		location = shader.getUniformLocation("material.shininess");
 		glUniform1f(location, node.material.shininess);
 		CHECK_GL_ERRORS;
+            }//end do_picking
 
 	}
 	shader.disable();
@@ -395,7 +519,7 @@ void A3::draw() {
 }
 
 //----------------------------------------------------------------------------------------
-void A3::renderSceneGraph(const SceneNode & root) {
+void A3::renderSceneGraph(SceneNode & root) {
 
 	// Bind the VAO once here, and reuse for all GeometryNode rendering below.
 	glBindVertexArray(m_vao_meshData);
@@ -413,14 +537,97 @@ void A3::renderSceneGraph(const SceneNode & root) {
 	// could put a set of mutually recursive functions in this class, which
 	// walk down the tree from nodes of different types.
 
-	for (const SceneNode * node : root.children) {
 
-		if (node->m_nodeType != NodeType::GeometryNode)
+        mat4 father_tans = mat4(1,0,0,0,
+                                0,1,0,0,
+                                0,0,1,0,
+                                0,0,0,1);
+        SceneNode * st_ptr;
+        vector<SceneNode *> stack;
+        stack.push_back(&root);
+        IsRoot = true;
+     while(!stack.empty()){
+        st_ptr = stack.back();
+        stack.pop_back();
+
+
+                
+               //rotate the root 
+                if(IsRoot){
+                  father_tans = st_ptr->father_trans * st_ptr->get_transform()*nObjRotMat;
+                  IsRoot = false;
+                }else{//end isroot
+                  father_tans = st_ptr->father_trans * st_ptr->get_transform();
+                }
+
+                
+
+                //Joint
+                if(st_ptr->m_nodeType == NodeType::JointNode){
+                     JointNode * Jp = (JointNode*)st_ptr;
+//                     if(selected[id]){
+//                        Jp->cur_y += 0.1;
+//                        cout <<"y="<<Jp->cur_y<<endl;}
+                     float angx = Jp->cur_x;
+                     float angy = Jp->cur_y;
+
+                     if(selected[id]){
+                         angx += offset_x;
+                         angy += offset_y;
+//cout <<"angx is "<<angx<<endl;
+//cout <<"angy is "<<angy<<endl;
+                     }//end if sel
+
+                     //check rotate range
+                     if(angx > Jp->m_joint_x.max){
+                         angx = Jp->m_joint_x.max;
+                     }else if(angx < Jp->m_joint_x.min) {
+                         angx = Jp->m_joint_x.min;
+                     }//end if angx
+
+                     if(angy > Jp->m_joint_y.max){
+                         angy = Jp->m_joint_y.max;
+                     }else if(angy < Jp->m_joint_y.min) {
+                         angy = Jp->m_joint_y.min;
+                     }//end if angy
+
+                     angx = degreesToRadians(angx);
+                     angy = degreesToRadians(angy);
+
+
+   //                  mat4 rotmat_y = mat4(cos(ang),0,-sin(ang),0,
+   //                                       0,1,0,0,
+   //                                       sin(ang),0,cos(ang),0,
+   //                                       0,0,0,1); 
+                     father_tans = father_tans * roty(angy)* rotx(angx);
+                     if(JustRelease&& selected[id]){
+                        Jp->move_x(offset_x);     //set cur to cur+offset
+                        Jp->move_y(offset_y);
+                     }//not m
+                }//end if st
+
+
+
+        //add children
+        for(SceneNode * ch : st_ptr->children){
+              
+             ch->father_trans = father_tans; 
+             stack.push_back(ch);
+        }//end for ch
+
+
+
+		if (st_ptr->m_nodeType != NodeType::GeometryNode)
 			continue;
 
-		const GeometryNode * geometryNode = static_cast<const GeometryNode *>(node);
+                
 
-		updateShaderUniforms(m_shader, *geometryNode, m_view);
+//if(st_ptr->m_name == "br-gauche" || st_ptr->m_name == "ep-gauche") cout << st_ptr->father_trans * st_ptr->trans<<endl;
+//cout<<"drawing "<<  st_ptr->m_name<<endl;
+		const GeometryNode * geometryNode = static_cast<const GeometryNode *>(st_ptr);
+
+                
+		updateShaderUniforms(m_shader, *geometryNode, m_view, nObjRotMat);
 
 
 		// Get the BatchInfo corresponding to the GeometryNode's unique MeshId.
@@ -430,11 +637,50 @@ void A3::renderSceneGraph(const SceneNode & root) {
 		m_shader.enable();
 		glDrawArrays(GL_TRIANGLES, batchInfo.startIndex, batchInfo.numIndices);
 		m_shader.disable();
-	}
+	       
+                ++id; // increment id for next Geo component 
+                if(id>= 100){cout << "more than 100 Geo, explode!"<<endl;}
+     }//end while emp
+
+        id = 0; //reset current drawing id
+
+        if(JustRelease){
+          offset_x = 0.0;
+          offset_y = 0.0;
+          JustRelease = false; //first loop after released mouse finished
+        }
+
 
 	glBindVertexArray(0);
 	CHECK_GL_ERRORS;
 }
+
+
+
+/*
+        for (const SceneNode * node : root.children) {
+
+                if (node->m_nodeType != NodeType::GeometryNode)
+                        continue;
+
+                const GeometryNode * geometryNode = static_cast<const GeometryNode *>(node);
+
+                updateShaderUniforms(m_shader, *geometryNode, m_view);
+
+
+                // Get the BatchInfo corresponding to the GeometryNode's unique MeshId.
+                BatchInfo batchInfo = m_batchInfoMap[geometryNode->meshId];
+
+                //-- Now render the mesh:
+                m_shader.enable();
+                glDrawArrays(GL_TRIANGLES, batchInfo.startIndex, batchInfo.numIndices);
+                m_shader.disable();
+        }
+
+*/
+
+
+
 
 //----------------------------------------------------------------------------------------
 // Draw the trackball circle.
@@ -493,6 +739,41 @@ bool A3::mouseMoveEvent (
 
 	// Fill in with event handling code...
 
+
+        if( GLFW_KEY_R == shortcut){   //model rotation
+            if (m_mouseMidAct ) {
+                 nObjRotMat = roty(0.1*(xPos - mouse_x)) * ObjRotMat;
+            }else if(m_mouseRightAct){
+                 nObjRotMat = rotz(0.1*(xPos - mouse_x)) * ObjRotMat;
+            }else{
+                 mouse_x = xPos;
+            }
+
+            if (m_mouseLeftAct) {
+                 nObjRotMat = rotx(0.1*(yPos - mouse_y)) * ObjRotMat;
+            }else{
+                 mouse_y = yPos;
+            }
+        }else if( GLFW_KEY_J == shortcut){    //part rotation
+              if (m_mouseLeftAct ) {
+              }else{
+//                 mouse_x = xPos;
+              }
+
+              if (m_mouseMidAct) {
+                   offset_x = (mouse_x - xPos)/1;
+cout <<"assigned offset x="<<offset_x<<endl;
+                   offset_y = (mouse_y - yPos)/0.5;
+              }else if(m_mouseRightAct){
+              }else{
+                 mouse_x = xPos;
+                 mouse_y = yPos;
+              }
+            
+
+        }//end if GLFW
+
+
 	return eventHandled;
 }
 
@@ -508,6 +789,78 @@ bool A3::mouseButtonInputEvent (
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
+
+        if(button == GLFW_MOUSE_BUTTON_LEFT && actions == GLFW_PRESS){
+
+               double xpos,ypos;
+               glfwGetCursorPos( m_window, &xpos,&ypos);
+
+               do_picking = true;
+               
+               uploadCommonSceneUniforms();
+               glClearColor(1.0,1.0,1.0,1.0);
+               glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+               glClearColor(0.35,0.35,0.35,1.0);
+
+               draw();
+
+               CHECK_GL_ERRORS;
+
+               xpos *= double(m_framebufferWidth) / double(m_windowWidth);
+               ypos = m_windowHeight - ypos;
+               ypos *= double(m_framebufferHeight) / double(m_windowHeight);
+
+               GLubyte buffer[4] = { 0,0,0,0 };
+               glReadBuffer( GL_BACK );
+  
+               glReadPixels( int(xpos), int(ypos), 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, buffer );
+               CHECK_GL_ERRORS;
+
+               // Reassemble the object ID.
+               unsigned int what = buffer[0] + (buffer[1] << 8) + (buffer[2] << 16);
+
+               cout << what <<endl;
+               if( what < 100 ) {
+                       selected[what] = !selected[what];
+               }
+               do_picking = false;             
+               CHECK_GL_ERRORS;
+        }//end if button
+        if (actions == GLFW_PRESS) {
+                if (!ImGui::IsMouseHoveringAnyWindow()) {
+                     if( GLFW_MOUSE_BUTTON_LEFT == button){
+                        m_mouseLeftAct = true;
+
+
+                     }else if( GLFW_MOUSE_BUTTON_MIDDLE == button){
+                        m_mouseMidAct = true;
+
+                     }else if( GLFW_MOUSE_BUTTON_RIGHT == button){
+                        m_mouseRightAct = true;
+
+                     }
+
+                }
+
+
+        }//end if act
+
+        if (actions == GLFW_RELEASE) {
+                m_mouseLeftAct = false;
+                m_mouseRightAct = false;
+                m_mouseMidAct = false;
+                RotMat = nRotMat;
+                ObjRotMat = nObjRotMat;
+                JustRelease = true;
+cout <<"-------relsase--------"<<endl;
+        }
+
+
+
+
+
+
+
 
 	return eventHandled;
 }
@@ -555,7 +908,10 @@ bool A3::keyInputEvent (
 		if( key == GLFW_KEY_M ) {
 			show_gui = !show_gui;
 			eventHandled = true;
-		}
+		}else{
+                        shortcut = key;
+                }
+
 	}
 	// Fill in with event handling code...
 

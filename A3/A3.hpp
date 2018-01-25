@@ -47,7 +47,7 @@ protected:
 
 	void initPerspectiveMatrix();
 	void uploadCommonSceneUniforms();
-	void renderSceneGraph(const SceneNode &node);
+	void renderSceneGraph(SceneNode &node);
 	void renderArcCircle();
 
 	glm::mat4 m_perpsective;
@@ -77,4 +77,19 @@ protected:
 	std::string m_luaSceneFile;
 
 	std::shared_ptr<SceneNode> m_rootNode;
+
+        // rotate picked component
+        glm::mat4 ObjRotMat, nObjRotMat,RotMat,nRotMat;
+        float mouse_x =0;
+        float mouse_y = 0;
+        void reset();
+        int shortcut = 0;
+
+        //mouse
+        bool m_mouseLeftAct = false;
+        bool m_mouseRightAct = false;
+        bool m_mouseMidAct = false;
+
+
+
 };

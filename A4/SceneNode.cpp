@@ -26,6 +26,16 @@ SceneNode::SceneNode(const std::string& name)
 	m_nodeId(nodeInstanceCount++)
 {
 
+        father_trans = mat4(1,0,0,0,
+                                0,1,0,0,
+                                0,0,1,0,
+                                0,0,0,1);
+        sfather_trans = mat4(1,0,0,0,
+                                0,1,0,0,
+                                0,0,1,0,
+                                0,0,0,1);
+
+
 }
 
 //---------------------------------------------------------------------------------------
@@ -34,7 +44,9 @@ SceneNode::SceneNode(const SceneNode & other)
 	: m_nodeType(other.m_nodeType),
 	  m_name(other.m_name),
 	  trans(other.trans),
-	  invtrans(other.invtrans)
+	  invtrans(other.invtrans),
+          father_trans(other.father_trans),
+          sfather_trans(other.sfather_trans)
 {
 	for(SceneNode * child : other.children) {
 		this->children.push_front(new SceneNode(*child));

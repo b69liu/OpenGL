@@ -1,0 +1,32 @@
+------------------------------------------------
+     how to compile
+------------------------------------------------
+
+1. open cs488 directory
+2. premake4 gmake
+3. make
+4  copy the libIrrKlang.so file to your desktop
+5. open cd488/A5 folder
+6. premake4 gmake
+7. make
+
+-----------------------------------------------
+     how to run
+-----------------------------------------------
+
+1. compile
+2. at cs488/A5 directory ./A3 puppet
+
+
+
+objectives:
+ 1.   Articulate(puppets' joints can work)
+ 2.   Animate(waling puppet)
+ 3.   Sky box 
+ 4.   Content "free" building implement correctly
+ 5.   Texture mapping implemented
+ 6.   Transparency works correctly(gradually appear/vanish)
+ 7.   Particle systems
+ 8.   Shadows
+ 9.   Collision system implemented(at least not through wall) 
+ 10.  Modeling the city

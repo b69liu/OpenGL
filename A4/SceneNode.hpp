@@ -44,6 +44,8 @@ public:
     // Transformations
     glm::mat4 trans;
     glm::mat4 invtrans;
+    glm::mat4 father_trans;
+    glm::mat4 sfather_trans; //for shadow
     
     std::list<SceneNode*> children;
 

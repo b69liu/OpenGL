@@ -428,7 +428,7 @@ bool PickingExample::mouseButtonInputEvent (
 
 		// Reassemble the object ID.
 		unsigned int what = buffer[0] + (buffer[1] << 8) + (buffer[2] << 16);
-
+cout <<what <<endl;
 		if( what < xforms.size() ) {
 			selected[what] = !selected[what];
 		}

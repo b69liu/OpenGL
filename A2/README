@@ -1,0 +1,16 @@
+How to run for Ubuntu at mc labs:
+
+
+The same to A1
+
+After compiled the cs488 file, open A1 file
+
+premake4 gmake
+make
+./A2
+
+
+
+Developing environment: MC3007 and MC3022
+
+The program was designed as descripted in the requirement, but it does not achieve to connect all points after clipping near and far
